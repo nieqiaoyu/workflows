@@ -1,0 +1,15 @@
+{
+  "last_updated": "2026-06-25T06:18:52+00:00",
+  "changes": [
+    {
+      "file": "docs/demo.md",
+      "summary": "变更内容：\n- 新增文档 `docs/demo.md`\n- 新增接口说明：`/demo/status`\n  - 用途：验证自动摘要流程\n- 新增响应字段：`status`\n  - 可选值：`ok`、`failed`\n- 新增关注说明：需确认与已有 demo 健康检查逻辑的字段命名是否一致\n\n需要关注：\n- 如果业务代码中已存在 demo 健康检查接口或逻辑，需要确认：\n  - 是否已有 `/demo/status` 接口\n  - 响应字段是否使用 `status`\n  - `status` 枚举值是否与 `ok` / `failed` 一致\n\n影响模块：\n- Demo 健康检查接口\n- API 响应结构\n- 文档自动摘要验证流程\n\n无影响：\n- 新增的是测试文档，用于验证文档更新自动化 MVP\n- 除 `/demo/status` 及 `status` 字段描述外，其余为说明性内容，不直接影响代码",
+      "timestamp": "2026-06-25T06:18:52+00:00",
+      "affected_modules": [
+        "Demo 健康检查接口",
+        "API 响应结构",
+        "文档自动摘要验证流程"
+      ]
+    }
+  ]
+}
