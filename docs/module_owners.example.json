@@ -11,13 +11,13 @@
       "frontend": [
         {
           "name": "前端负责人示例",
-          "mention": "<at id=ou_frontend_user_id></at>"
+          "mobile": "13800000000"
         }
       ],
       "backend": [
         {
           "name": "后端负责人示例",
-          "mention": "<at id=ou_backend_user_id></at>"
+          "user_id": "zhangsan"
         }
       ]
     }

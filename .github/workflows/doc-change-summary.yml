@@ -44,11 +44,10 @@ jobs:
           AFTER_SHA: ${{ github.sha }}
         run: python3 scripts/generate_summary.py
 
-      - name: Send to Feishu
+      - name: Send to WeCom
         if: steps.summary.outputs.has_changes == 'true'
         env:
-          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
-          FEISHU_SIGN_SECRET: ${{ secrets.FEISHU_SIGN_SECRET }}
+          WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
           REPO_URL: ${{ github.repository }}
         run: python3 scripts/send_notification.py
 
