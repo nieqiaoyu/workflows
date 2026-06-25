@@ -5,8 +5,12 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import requests
+
+
+OWNERS_FILE = Path(os.environ.get("MODULE_OWNERS_FILE", "docs/module_owners.json"))
 
 
 def main():
@@ -25,6 +29,9 @@ def format_feishu_message(changes: dict) -> str:
     for item in changes["changes"]:
         text += f"**文件：`{item['file']}`**\n\n"
         text += item["summary"]
+        owner_mentions = format_owner_mentions(item)
+        if owner_mentions:
+            text += f"\n\n{owner_mentions}"
         text += "\n\n---\n\n"
 
     repo_url = os.environ.get("REPO_URL", "")
@@ -32,6 +39,77 @@ def format_feishu_message(changes: dict) -> str:
         text += f"[查看完整变更日志](https://github.com/{repo_url}/blob/main/CHANGELOG.md)"
 
     return text
+
+
+def load_module_owners() -> list[dict]:
+    if not OWNERS_FILE.exists():
+        return []
+
+    try:
+        data = json.loads(OWNERS_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"Invalid module owners file: {OWNERS_FILE}: {exc}")
+        return []
+
+    modules = data.get("modules", [])
+    return modules if isinstance(modules, list) else []
+
+
+def format_owner_mentions(change: dict) -> str:
+    matched = find_matching_owners(change)
+    frontend = dedupe_people(matched.get("frontend", []))
+    backend = dedupe_people(matched.get("backend", []))
+
+    lines = []
+    if frontend:
+        lines.append("前端负责人：" + "、".join(render_person(person) for person in frontend))
+    if backend:
+        lines.append("后端负责人：" + "、".join(render_person(person) for person in backend))
+
+    if not lines:
+        return ""
+    return "相关负责人：\n" + "\n".join(lines)
+
+
+def find_matching_owners(change: dict) -> dict[str, list[dict]]:
+    haystack_parts = [
+        change.get("file", ""),
+        change.get("summary", ""),
+        " ".join(change.get("affected_modules", [])),
+    ]
+    haystack = "\n".join(haystack_parts).lower()
+
+    matched = {"frontend": [], "backend": []}
+    for module in load_module_owners():
+        keywords = [module.get("module", ""), *module.get("keywords", [])]
+        keywords = [keyword.lower() for keyword in keywords if keyword]
+        if not keywords or not any(keyword in haystack for keyword in keywords):
+            continue
+
+        matched["frontend"].extend(module.get("frontend", []))
+        matched["backend"].extend(module.get("backend", []))
+
+    return matched
+
+
+def dedupe_people(people: list[dict]) -> list[dict]:
+    seen = set()
+    result = []
+    for person in people:
+        key = person.get("mention") or person.get("feishu_id") or person.get("name")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(person)
+    return result
+
+
+def render_person(person: dict) -> str:
+    if person.get("mention"):
+        return person["mention"]
+    if person.get("feishu_id"):
+        return f"<at id={person['feishu_id']}></at>"
+    return person.get("name", "未命名负责人")
 
 
 def send_to_feishu(message: str) -> None:

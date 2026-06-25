@@ -1,0 +1,25 @@
+{
+  "modules": [
+    {
+      "module": "Demo 健康检查",
+      "keywords": [
+        "Demo 健康检查",
+        "/demo/status",
+        "API 响应结构",
+        "docs/demo.md"
+      ],
+      "frontend": [
+        {
+          "name": "前端负责人示例",
+          "mention": "<at id=ou_frontend_user_id></at>"
+        }
+      ],
+      "backend": [
+        {
+          "name": "后端负责人示例",
+          "mention": "<at id=ou_backend_user_id></at>"
+        }
+      ]
+    }
+  ]
+}

@@ -2,8 +2,9 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -105,7 +106,8 @@ def get_file_diff(file: str, before_sha: str, after_sha: str) -> str:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    timezone_name = os.environ.get("DOC_TIMEZONE", "Asia/Shanghai")
+    return datetime.now(ZoneInfo(timezone_name)).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_next_version() -> int:
