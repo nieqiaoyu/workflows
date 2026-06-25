@@ -48,6 +48,7 @@ jobs:
         if: steps.summary.outputs.has_changes == 'true'
         env:
           WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
+          MODULE_OWNERS_JSON: ${{ secrets.MODULE_OWNERS_JSON }}
           REPO_URL: ${{ github.repository }}
         run: python3 scripts/send_notification.py
 

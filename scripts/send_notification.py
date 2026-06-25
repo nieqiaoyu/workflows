@@ -43,6 +43,17 @@ def format_markdown_message(changes: dict, matched_owners: dict) -> str:
 
 
 def load_module_owners() -> list[dict]:
+    owners_json = os.environ.get("MODULE_OWNERS_JSON", "").strip()
+    if owners_json:
+        try:
+            data = json.loads(owners_json)
+        except json.JSONDecodeError as exc:
+            print(f"Invalid MODULE_OWNERS_JSON: {exc}")
+            return []
+
+        modules = data.get("modules", [])
+        return modules if isinstance(modules, list) else []
+
     if not OWNERS_FILE.exists():
         return []
 
