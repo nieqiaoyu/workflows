@@ -15,6 +15,7 @@ CHANGES_JSON = Path("docs/changes.json")
 def main():
     before_sha = os.environ.get("BEFORE_SHA", "").strip()
     after_sha = os.environ.get("AFTER_SHA", "HEAD").strip()
+    version = get_next_version()
 
     changed_files = get_changed_markdown_files(before_sha, after_sha)
     if not changed_files:
@@ -37,6 +38,7 @@ def main():
                 "file": file,
                 "summary": summary_text,
                 "timestamp": now_iso(),
+                "version": version,
                 "affected_modules": extract_modules(summary_text),
             }
         )
@@ -46,8 +48,8 @@ def main():
         set_github_output("has_changes", "false")
         return
 
-    save_changelog(summaries)
-    save_changes_json(summaries)
+    save_changelog(summaries, version)
+    save_changes_json(summaries, version)
     set_github_output("has_changes", "true")
 
 
@@ -104,6 +106,22 @@ def get_file_diff(file: str, before_sha: str, after_sha: str) -> str:
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def get_next_version() -> int:
+    if not CHANGES_JSON.exists():
+        return 1
+
+    try:
+        data = json.loads(CHANGES_JSON.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return 1
+
+    current_version = data.get("version", 0)
+    try:
+        return int(current_version) + 1
+    except (TypeError, ValueError):
+        return 1
 
 
 def generate_ai_summary(file_name: str, diff_content: str) -> str:
@@ -191,23 +209,24 @@ def extract_modules(summary: str) -> list[str]:
     return modules
 
 
-def save_changelog(summaries: list[dict]) -> None:
+def save_changelog(summaries: list[dict], version: int) -> None:
     header = "# 文档变更日志\n\n"
     changelog = Path("CHANGELOG.md")
     existing = changelog.read_text(encoding="utf-8") if changelog.exists() else header
 
     new_entries = ""
     for item in summaries:
-        new_entries += f"## {item['timestamp']} - `{item['file']}`\n\n"
+        new_entries += f"## v{version} - {item['timestamp']} - `{item['file']}`\n\n"
         new_entries += f"{item['summary']}\n\n---\n\n"
 
     old_content = existing.replace(header, "")
     changelog.write_text(header + new_entries + old_content, encoding="utf-8")
 
 
-def save_changes_json(summaries: list[dict]) -> None:
+def save_changes_json(summaries: list[dict], version: int) -> None:
     CHANGES_JSON.parent.mkdir(parents=True, exist_ok=True)
     data = {
+        "version": version,
         "last_updated": now_iso(),
         "changes": summaries,
     }

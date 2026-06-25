@@ -18,7 +18,9 @@ def main():
 
 
 def format_feishu_message(changes: dict) -> str:
-    text = f"更新时间：{changes['last_updated']}\n\n"
+    version = changes.get("version", "unknown")
+    text = f"文档变更版本：v{version}\n"
+    text += f"更新时间：{changes['last_updated']}\n\n"
 
     for item in changes["changes"]:
         text += f"**文件：`{item['file']}`**\n\n"
