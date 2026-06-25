@@ -51,6 +51,18 @@ def load_module_owners() -> list[dict]:
             print(f"Invalid MODULE_OWNERS_JSON: {exc}")
             return []
 
+        if isinstance(data, int):
+            return default_mobile_owner(str(data))
+        if isinstance(data, str):
+            value = data.strip()
+            if value.isdigit():
+                return default_mobile_owner(value)
+            print("Invalid MODULE_OWNERS_JSON: expected object with modules, got string.")
+            return []
+        if not isinstance(data, dict):
+            print("Invalid MODULE_OWNERS_JSON: expected object with modules.")
+            return []
+
         modules = data.get("modules", [])
         return modules if isinstance(modules, list) else []
 
@@ -65,6 +77,22 @@ def load_module_owners() -> list[dict]:
 
     modules = data.get("modules", [])
     return modules if isinstance(modules, list) else []
+
+
+def default_mobile_owner(mobile: str) -> list[dict]:
+    return [
+        {
+            "module": "默认负责人",
+            "keywords": ["docs/demo.md"],
+            "frontend": [
+                {
+                    "name": "默认负责人",
+                    "mobile": mobile,
+                }
+            ],
+            "backend": [],
+        }
+    ]
 
 
 def collect_matched_owners(changes: dict) -> dict[str, dict]:
