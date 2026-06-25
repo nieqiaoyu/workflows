@@ -1,0 +1,62 @@
+name: Doc Change Summary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**/*.md'
+      - '*.md'
+      - '!CHANGELOG.md'
+
+jobs:
+  generate-and-notify:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    concurrency:
+      group: doc-change-summary-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Generate change summary
+        id: summary
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_API_BASE: ${{ vars.LLM_API_BASE }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: python3 scripts/generate_summary.py
+
+      - name: Send to Feishu
+        if: steps.summary.outputs.has_changes == 'true'
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          FEISHU_SIGN_SECRET: ${{ secrets.FEISHU_SIGN_SECRET }}
+          REPO_URL: ${{ github.repository }}
+        run: python3 scripts/send_notification.py
+
+      - name: Commit and push changelog
+        if: steps.summary.outputs.has_changes == 'true'
+        run: |
+          git config user.name "doc-bot"
+          git config user.email "doc-bot@github"
+          git add CHANGELOG.md docs/changes.json
+          git diff --staged --quiet || git commit -m "auto: update doc change summary [skip ci]"
+          git push
