@@ -207,10 +207,10 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
         return None
 
     version = changes.get("version", "unknown")
-    owner_names = "、".join(render_person_for_text(person) for person in people)
     content = f"请相关负责人关注技术文档更新 v{version}，详情见上方通知。"
-    if owner_names:
-        content += f"\n负责人：{owner_names}"
+    owner_lines = format_text_owner_lines(people)
+    if owner_lines:
+        content += f"\n{owner_lines}"
 
     print(
         "WeCom mention targets: "
@@ -226,13 +226,24 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
 
 
 def render_person_for_text(person: dict) -> str:
-    name = person.get("name") or person.get("user_id") or "未命名负责人"
-    role = person.get("role")
-    mobile = person.get("mobile", "")
-    display_name = f"{name}/{role}" if role else name
-    if mobile and len(mobile) >= 4:
-        return f"{display_name}（尾号{mobile[-4:]}）"
-    return display_name
+    return person.get("name") or person.get("user_id") or "未命名负责人"
+
+
+def format_text_owner_lines(people: list[dict]) -> str:
+    grouped = group_people_by_role(people)
+    role_order = ["前端", "后端", "测试"]
+    lines = []
+
+    for role in role_order:
+        role_people = grouped.pop(role, [])
+        if role_people:
+            lines.append(f"{role}：" + "、".join(render_person_for_text(person) for person in role_people))
+
+    for role, role_people in grouped.items():
+        if role_people:
+            lines.append(f"{role}：" + "、".join(render_person_for_text(person) for person in role_people))
+
+    return "\n".join(lines)
 
 
 def mask_mobile(mobile: str) -> str:
