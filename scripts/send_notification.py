@@ -130,10 +130,12 @@ def render_person_name(person: dict) -> str:
 def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
     user_ids = []
     mobiles = []
+    people = []
 
     for owners in matched_owners.values():
         for role in ("frontend", "backend"):
             for person in owners.get(role, []):
+                people.append(person)
                 if person.get("user_id"):
                     user_ids.append(person["user_id"])
                 if person.get("mobile"):
@@ -141,15 +143,41 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
 
     user_ids = dedupe_values(user_ids)
     mobiles = dedupe_values(mobiles)
+    people = dedupe_people(people)
     if not user_ids and not mobiles:
         return None
 
     version = changes.get("version", "unknown")
+    owner_names = "、".join(render_person_for_text(person) for person in people)
+    content = f"请相关负责人关注技术文档更新 v{version}，详情见上方通知。"
+    if owner_names:
+        content += f"\n负责人：{owner_names}"
+
+    print(
+        "WeCom mention targets: "
+        f"user_ids={len(user_ids)}, "
+        f"mobiles={','.join(mask_mobile(mobile) for mobile in mobiles)}"
+    )
+
     return {
-        "content": f"请相关负责人关注技术文档更新 v{version}，详情见上方通知。",
+        "content": content,
         "mentioned_list": user_ids,
         "mentioned_mobile_list": mobiles,
     }
+
+
+def render_person_for_text(person: dict) -> str:
+    name = person.get("name") or person.get("user_id") or "未命名负责人"
+    mobile = person.get("mobile", "")
+    if mobile and len(mobile) >= 4:
+        return f"{name}（尾号{mobile[-4:]}）"
+    return name
+
+
+def mask_mobile(mobile: str) -> str:
+    if len(mobile) < 4:
+        return "****"
+    return f"***{mobile[-4:]}"
 
 
 def dedupe_values(values: list[str]) -> list[str]:
