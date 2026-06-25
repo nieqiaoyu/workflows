@@ -226,7 +226,13 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
 
 
 def render_person_for_text(person: dict) -> str:
-    return person.get("name") or person.get("user_id") or "未命名负责人"
+    name = person.get("name")
+    user_id = person.get("user_id")
+    if name and user_id:
+        return f"@{name}{user_id}"
+    if user_id:
+        return f"@{user_id}"
+    return name or "未命名负责人"
 
 
 def format_text_owner_lines(people: list[dict]) -> str:
