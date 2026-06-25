@@ -84,13 +84,13 @@ def default_mobile_owner(mobile: str) -> list[dict]:
         {
             "module": "默认负责人",
             "keywords": ["docs/demo.md"],
-            "frontend": [
+            "owners": [
                 {
                     "name": "默认负责人",
+                    "role": "负责人",
                     "mobile": mobile,
                 }
             ],
-            "backend": [],
         }
     ]
 
@@ -104,14 +104,13 @@ def collect_matched_owners(changes: dict) -> dict[str, dict]:
 
 def format_owner_lines(change: dict, matched_owners: dict) -> str:
     owners = matched_owners.get(change.get("file", ""), {})
-    frontend = dedupe_people(owners.get("frontend", []))
-    backend = dedupe_people(owners.get("backend", []))
+    people = dedupe_people(owners.get("owners", []))
 
-    lines = []
-    if frontend:
-        lines.append("**前端负责人：** " + "、".join(render_person_name(person) for person in frontend))
-    if backend:
-        lines.append("**后端负责人：** " + "、".join(render_person_name(person) for person in backend))
+    grouped = group_people_by_role(people)
+    lines = [
+        f"**{role}：** " + "、".join(render_person_name(person) for person in role_people)
+        for role, role_people in grouped.items()
+    ]
 
     if not lines:
         return ""
@@ -126,17 +125,42 @@ def find_matching_owners(change: dict) -> dict[str, list[dict]]:
     ]
     haystack = "\n".join(haystack_parts).lower()
 
-    matched = {"frontend": [], "backend": []}
+    matched = {"owners": []}
     for module in load_module_owners():
         keywords = [module.get("module", ""), *module.get("keywords", [])]
         keywords = [keyword.lower() for keyword in keywords if keyword]
-        if not keywords or not any(keyword in haystack for keyword in keywords):
+        if not keywords:
+            continue
+        if "*" not in keywords and not any(keyword in haystack for keyword in keywords):
             continue
 
-        matched["frontend"].extend(module.get("frontend", []))
-        matched["backend"].extend(module.get("backend", []))
+        matched["owners"].extend(normalize_module_people(module))
 
     return matched
+
+
+def normalize_module_people(module: dict) -> list[dict]:
+    people = []
+
+    for person in module.get("owners", []):
+        normalized = dict(person)
+        normalized.setdefault("role", "负责人")
+        people.append(normalized)
+
+    legacy_roles = {
+        "frontend": "前端",
+        "backend": "后端",
+        "test": "测试",
+        "testing": "测试",
+        "qa": "测试",
+    }
+    for field, role in legacy_roles.items():
+        for person in module.get(field, []):
+            normalized = dict(person)
+            normalized.setdefault("role", role)
+            people.append(normalized)
+
+    return people
 
 
 def dedupe_people(people: list[dict]) -> list[dict]:
@@ -155,19 +179,26 @@ def render_person_name(person: dict) -> str:
     return person.get("name") or person.get("user_id") or person.get("mobile") or "未命名负责人"
 
 
+def group_people_by_role(people: list[dict]) -> dict[str, list[dict]]:
+    grouped = {}
+    for person in people:
+        role = person.get("role") or "负责人"
+        grouped.setdefault(role, []).append(person)
+    return grouped
+
+
 def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
     user_ids = []
     mobiles = []
     people = []
 
     for owners in matched_owners.values():
-        for role in ("frontend", "backend"):
-            for person in owners.get(role, []):
-                people.append(person)
-                if person.get("user_id"):
-                    user_ids.append(person["user_id"])
-                if person.get("mobile"):
-                    mobiles.append(person["mobile"])
+        for person in owners.get("owners", []):
+            people.append(person)
+            if person.get("user_id"):
+                user_ids.append(person["user_id"])
+            if person.get("mobile"):
+                mobiles.append(person["mobile"])
 
     user_ids = dedupe_values(user_ids)
     mobiles = dedupe_values(mobiles)
@@ -196,10 +227,12 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
 
 def render_person_for_text(person: dict) -> str:
     name = person.get("name") or person.get("user_id") or "未命名负责人"
+    role = person.get("role")
     mobile = person.get("mobile", "")
+    display_name = f"{name}/{role}" if role else name
     if mobile and len(mobile) >= 4:
-        return f"{name}（尾号{mobile[-4:]}）"
-    return name
+        return f"{display_name}（尾号{mobile[-4:]}）"
+    return display_name
 
 
 def mask_mobile(mobile: str) -> str:
