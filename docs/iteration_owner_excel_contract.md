@@ -6,6 +6,8 @@
 
 模板文件：[iteration_module_owners_template.xlsx](./iteration_module_owners_template.xlsx)
 
+完整 Agent 操作手册见：[ai_agent_operation_manual.md](./ai_agent_operation_manual.md)
+
 需求文档版本归档规则见：[iteration_requirement_versioning.md](./iteration_requirement_versioning.md)
 
 ## 推荐工作流

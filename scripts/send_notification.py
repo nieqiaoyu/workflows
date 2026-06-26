@@ -25,8 +25,8 @@ def main():
 
 
 def format_markdown_message(changes: dict, matched_owners: dict) -> str:
-    version = changes.get("version", "unknown")
-    text = f"## 技术文档更新通知 v{version}\n"
+    version = format_notice_version(get_notice_version(changes))
+    text = f"## 技术文档更新通知 {version}\n"
     text += f"> 更新时间：{changes['last_updated']}\n\n"
 
     for item in changes["changes"]:
@@ -215,8 +215,8 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
     if not user_ids and not mobiles:
         return None
 
-    version = changes.get("version", "unknown")
-    content = f"请相关负责人关注技术文档更新 v{version}，详情见上方通知。"
+    version = format_notice_version(get_notice_version(changes))
+    content = f"请相关负责人关注技术文档更新 {version}，详情见上方通知。"
 
     print(
         "WeCom mention targets: "
@@ -229,6 +229,42 @@ def build_mention_payload(changes: dict, matched_owners: dict) -> dict | None:
         "mentioned_list": user_ids,
         "mentioned_mobile_list": mobiles,
     }
+
+
+def get_notice_version(changes: dict) -> str:
+    iteration_versions = []
+    for item in changes.get("changes", []):
+        parsed = parse_iteration_version(item.get("file", ""))
+        if parsed:
+            iteration_versions.append(parsed)
+
+    iteration_versions = dedupe_values(iteration_versions)
+    if len(iteration_versions) == 1:
+        return iteration_versions[0]
+    if len(iteration_versions) > 1:
+        return "、".join(iteration_versions)
+    return str(changes.get("version", "unknown"))
+
+
+def parse_iteration_version(file_path: str) -> str | None:
+    parts = Path(file_path).parts
+    if "iterations" not in parts:
+        return None
+
+    index = parts.index("iterations")
+    if len(parts) <= index + 2:
+        return None
+
+    iteration = parts[index + 1]
+    version = parts[index + 2]
+    if not version.startswith("v"):
+        return None
+
+    return f"{iteration} {version}"
+
+
+def format_notice_version(version: str) -> str:
+    return f"v{version}" if version.isdigit() else version
 
 
 def mask_mobile(mobile: str) -> str:

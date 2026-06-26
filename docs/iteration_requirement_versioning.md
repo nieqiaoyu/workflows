@@ -2,6 +2,8 @@
 
 需求文档不能被覆盖式替换。每个迭代建立一个独立目录，保存最初需求和每一次后续变动；每次变动都必须有版本号、变动人、变更说明，以及 agent 当时实际读取过的文件快照。
 
+完整 Agent 操作手册见：[ai_agent_operation_manual.md](./ai_agent_operation_manual.md)
+
 ## 目录结构
 
 ```text
