@@ -1,0 +1,25 @@
+{
+  "iteration": "S1",
+  "version": "v1",
+  "based_on": "00_initial",
+  "changed_by": {
+    "name": "模拟产品",
+    "role": "产品"
+  },
+  "changed_at": "2026-06-26 10:10:00",
+  "change_summary": "订单展示创建人字段由 createId 调整为 createName。",
+  "affected_modules": [
+    "订单展示"
+  ],
+  "affected_fields": [
+    {
+      "from": "createId",
+      "to": "createName"
+    }
+  ],
+  "agent_context_files": [
+    "agent_context/requirement_before.md",
+    "agent_context/requirement_after.md",
+    "agent_context/iteration_module_owners.xlsx"
+  ]
+}
