@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import sys
@@ -107,10 +109,20 @@ def format_owner_lines(change: dict, matched_owners: dict) -> str:
     people = dedupe_people(owners.get("owners", []))
 
     grouped = group_people_by_role(people)
-    lines = [
-        f"**{role}：** " + "、".join(render_person_name(person) for person in role_people)
-        for role, role_people in grouped.items()
-    ]
+    lines = []
+    role_order = ["测试", "前端", "后端"]
+    for role in role_order:
+        if role in grouped:
+            role_people = grouped.pop(role)
+            lines.append(
+                f"**{role}：** "
+                + "、".join(render_person_name(person) for person in role_people)
+            )
+
+    for role, role_people in grouped.items():
+        lines.append(
+            f"**{role}：** " + "、".join(render_person_name(person) for person in role_people)
+        )
 
     if not lines:
         return ""

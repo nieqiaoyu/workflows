@@ -1,23 +1,25 @@
 {
   "modules": [
     {
-      "module": "Demo 健康检查",
+      "module": "默认通知",
       "keywords": [
-        "Demo 健康检查",
-        "/demo/status",
-        "API 响应结构",
-        "docs/demo.md"
+        "*"
       ],
-      "frontend": [
+      "owners": [
         {
-          "name": "前端负责人示例",
+          "name": "测试负责人",
+          "role": "测试",
           "mobile": "13800000000"
-        }
-      ],
-      "backend": [
+        },
         {
-          "name": "后端负责人示例",
-          "user_id": "zhangsan"
+          "name": "前端负责人",
+          "role": "前端",
+          "mobile": "13800000000"
+        },
+        {
+          "name": "后端负责人",
+          "role": "后端",
+          "mobile": "13800000000"
         }
       ]
     }
