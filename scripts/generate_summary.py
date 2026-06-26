@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -151,9 +152,110 @@ def generate_ai_summary(file_name: str, diff_content: str) -> str:
 摘要要简洁，开发者1分钟内能看完。"""
 
     provider = (os.environ.get("LLM_PROVIDER") or "openai-compatible").strip().lower()
-    if provider == "anthropic":
-        return call_anthropic(prompt)
-    return call_openai_compatible(prompt)
+    try:
+        if provider == "anthropic":
+            return call_anthropic(prompt)
+        return call_openai_compatible(prompt)
+    except (requests.RequestException, KeyError, IndexError, json.JSONDecodeError) as exc:
+        print(f"AI summary failed, using fallback summary: {exc}")
+        return generate_fallback_summary(file_name, diff_content)
+
+
+def generate_fallback_summary(file_name: str, diff_content: str) -> str:
+    added_lines = []
+    removed_lines = []
+    for line in diff_content.splitlines():
+        if line.startswith("+++") or line.startswith("---"):
+            continue
+        if line.startswith("+"):
+            added_lines.append(line[1:].strip())
+        elif line.startswith("-"):
+            removed_lines.append(line[1:].strip())
+
+    replacements = infer_replacements(removed_lines, added_lines)
+    module = infer_module(file_name, diff_content)
+
+    text = "变更内容：\n"
+    text += "- AI 摘要服务暂时不可用，已使用本地 diff 生成保底摘要。\n"
+    text += f"- 文件 `{file_name}` 发生文档变更。\n"
+    for old_value, new_value in replacements[:5]:
+        text += f"- 字段/标识疑似由 `{old_value}` 调整为 `{new_value}`。\n"
+    for line in compact_lines(added_lines, 5):
+        text += f"- 新增：{line}\n"
+    for line in compact_lines(removed_lines, 3):
+        text += f"- 删除：{line}\n"
+
+    text += "\n需要关注：\n"
+    text += "- 请相关前端、后端和测试负责人根据上述字段/文案变化确认是否需要适配。\n"
+    if replacements:
+        text += "- 若字段名发生替换，请同步检查接口返回、页面展示、测试用例和兼容逻辑。\n"
+
+    text += "\n影响模块：\n"
+    text += f"- {module}\n"
+
+    text += "\n无影响：\n"
+    text += "- 保底摘要无法可靠判断无影响范围，请以版本目录中的 change.md 和 agent_context 为准。"
+    return text
+
+
+def infer_replacements(removed_lines: list[str], added_lines: list[str]) -> list[tuple[str, str]]:
+    removed_tokens = extract_code_tokens("\n".join(removed_lines))
+    added_tokens = extract_code_tokens("\n".join(added_lines))
+    replacements = []
+    for old_token in removed_tokens:
+        for new_token in added_tokens:
+            if old_token != new_token and normalized_token(old_token) == normalized_token(new_token):
+                replacements.append((old_token, new_token))
+    return dedupe_pairs(replacements)
+
+
+def extract_code_tokens(text: str) -> list[str]:
+    tokens = re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)`", text)
+    tokens.extend(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]{2,}\b", text))
+    return dedupe_values(tokens)
+
+
+def normalized_token(value: str) -> str:
+    return re.sub(r"(id|name)$", "", value, flags=re.IGNORECASE).lower()
+
+
+def compact_lines(lines: list[str], limit: int) -> list[str]:
+    return [
+        line
+        for line in dedupe_values(lines)
+        if line and not line.startswith("#") and not line.startswith("@@")
+    ][:limit]
+
+
+def infer_module(file_name: str, diff_content: str) -> str:
+    if "订单" in diff_content or "order" in file_name.lower():
+        return "订单展示"
+    parts = Path(file_name).parts
+    if "iterations" in parts:
+        index = parts.index("iterations")
+        if len(parts) > index + 1:
+            return f"需求文档/{parts[index + 1]}"
+    return Path(file_name).stem
+
+
+def dedupe_pairs(values: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    seen = set()
+    result = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            result.append(value)
+    return result
+
+
+def dedupe_values(values: list[str]) -> list[str]:
+    seen = set()
+    result = []
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            result.append(value)
+    return result
 
 
 def call_openai_compatible(prompt: str) -> str:

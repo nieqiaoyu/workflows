@@ -9,6 +9,7 @@
 ## 变更说明
 
 - 订单展示中的创建人字段由 `createId` 调整为 `createName`。
+- 字段替换关系：`createId` -> `createName`。
 - 前端展示创建人姓名，不再展示创建人账号 ID。
 - 后端接口需要确认订单列表和订单详情页都返回 `createName`。
 
